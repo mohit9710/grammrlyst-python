@@ -1,1 +1,1 @@
-print('grammrlyst app is running')
+print('grammrlyst app is running lmao noob is now pro')
