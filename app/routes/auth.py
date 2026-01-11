@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from db.session import SessionLocal
-from db.models import User
-from schemas.auth import SignUpSchema, SignInSchema
-from core.security import hash_password, verify_password, create_token
-from core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+from app.db.session import SessionLocal
+from app.db.models import User
+from app.db.models import Verbs
+from app.schemas.auth import SignUpSchema, SignInSchema
+from app.core.security import hash_password, verify_password, create_token
+from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -54,3 +55,27 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
+@router.get("/get")
+def getdata():
+
+    # 2. Load JSON file
+    with open("verbs.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+
+    # 4. Insert data
+    for verb in data["verbs"]:
+        verb = Verbs(
+            email=payload.email,
+            password=hash_password(payload.password)
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    print("✅ Verbs inserted successfully")

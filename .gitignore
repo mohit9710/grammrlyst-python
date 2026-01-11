@@ -1,2 +1,18 @@
 # Ignore the model folder
+# Environment
+.env
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 model/
+
+#SQL
+*.sql
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
