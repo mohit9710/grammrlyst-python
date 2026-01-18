@@ -55,27 +55,3 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
-
-@router.get("/get")
-def getdata():
-
-    # 2. Load JSON file
-    with open("verbs.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-
-    # 4. Insert data
-    for verb in data["verbs"]:
-        verb = Verbs(
-            email=payload.email,
-            password=hash_password(payload.password)
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    print("✅ Verbs inserted successfully")
