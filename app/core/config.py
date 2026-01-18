@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # DATABASE_URL = "mysql+pymysql://root:''@localhost:3306/grammrlyst"
-DATABASE_URL = "mysql+pymysql://root@localhost:3306/grammrlyst"
+DATABASE_URL = "mysql+pymysql://root@localhost:3307/grammrlyst"
 
 JWT_SECRET_KEY = "SUPER_SECRET_KEY"
 JWT_ALGORITHM = "HS256"
