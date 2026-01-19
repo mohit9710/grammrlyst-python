@@ -8,6 +8,7 @@ from app.db.models import Verbs
 from app.schemas.auth import SignUpSchema, SignInSchema
 from app.core.security import hash_password, verify_password, create_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -54,4 +55,21 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
+    }
+
+@router.get("/userprofile")
+def get_profile(
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "created_at": user.created_at
     }

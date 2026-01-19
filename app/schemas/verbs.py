@@ -7,6 +7,7 @@ class VerbResponse(BaseModel):
     past_participle: str
     meaning: str | None
     example: str | None
+    type: str | None
 
     class Config:
         orm_mode = True
