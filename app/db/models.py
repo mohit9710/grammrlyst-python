@@ -64,3 +64,28 @@ class QuizOption(Base):
     is_correct = Column(Boolean, default=False)
 
     question = relationship("QuizQuestion", back_populates="options")
+
+class Sentence(Base):
+    __tablename__ = "Sentences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(TEXT, nullable=False)
+    difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
+    char_count = Column(Integer)
+
+# New Spelling Model
+class SpellingChallenge(Base):
+    __tablename__ = "SpellingChallenges"
+    id = Column(Integer, primary_key=True, index=True)
+    wrong_version = Column(String(255), nullable=False)
+    right_version = Column(String(255), nullable=False)
+    difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
+
+class ScrambleChallenge(Base):
+    __tablename__ = "ScrambleChallenges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    original_word = Column(String(100), nullable=False)
+    scrambled_word = Column(String(100), nullable=False)
+    hint = Column(TEXT, nullable=True)
+    difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
