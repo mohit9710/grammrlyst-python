@@ -21,18 +21,45 @@ def get_db():
 
 @router.post("/signup")
 def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
+
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    # print(payload)
     user = User(
+        # name=payload.first_name+" "+payload.last_name,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
         email=payload.email,
         password=hash_password(payload.password)
     )
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return {"message": "User registered successfully"}
+    access_token = create_token(
+        {"user_id": user.id},
+        timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    refresh_token = create_token(
+        {"user_id": user.id},
+        timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    return {
+        "message": "User registered successfully",
+        "user": {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email
+        },
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 @router.post("/signin")
 def signin(payload: SignInSchema, db: Session = Depends(get_db)):
@@ -69,7 +96,6 @@ def get_profile(
 
     return {
         "id": user.id,
-        "name": user.name,
+        "name": user.first_name,
         "email": user.email,
-        "created_at": user.created_at
     }
