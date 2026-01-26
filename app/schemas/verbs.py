@@ -10,4 +10,4 @@ class VerbResponse(BaseModel):
     type: str | None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
