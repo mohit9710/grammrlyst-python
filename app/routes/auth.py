@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import timedelta
-
+from datetime import datetime, timedelta
 from app.db.session import SessionLocal
 from app.db.models import User
 from app.db.models import Verbs
-from app.schemas.auth import SignUpSchema, SignInSchema
-from app.core.security import hash_password, verify_password, create_token, generate_email_token
+from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema
+from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.dependencies import get_current_user
-from app.core.mail import send_verification_email
+from app.core.mail import send_verification_email, send_reset_password_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -129,4 +128,52 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     return {
         "message": "Email verified successfully 🎉"
+    }
+
+@router.post("/forgot-password")
+def forgot_password(
+    payload: ForgotPasswordSchema,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == payload.email).first()
+
+    if not user:
+        return {"message": "If the email exists, a reset link has been sent"}
+
+    token = generate_reset_token()
+
+    user.reset_password_token = token
+    user.reset_password_expires = datetime.utcnow() + timedelta(minutes=15)
+
+    db.commit()
+
+    send_reset_password_email(user.email, token)
+
+    return {
+        "message": "If the email exists, a reset link has been sent"
+    }
+
+@router.post("/reset-password")
+def reset_password(
+    payload: ResetPasswordSchema,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(
+        User.reset_password_token == payload.token
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    if user.reset_password_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expired")
+
+    user.password = hash_password(payload.new_password)
+    user.reset_password_token = None
+    user.reset_password_expires = None
+
+    db.commit()
+
+    return {
+        "message": "Password reset successfully"
     }

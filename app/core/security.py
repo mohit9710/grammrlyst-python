@@ -19,3 +19,6 @@ def create_token(data: dict, expires_delta: timedelta):
 
 def generate_email_token():
     return secrets.token_urlsafe(32)
+
+def generate_reset_token():
+    return secrets.token_urlsafe(32)

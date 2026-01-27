@@ -10,3 +10,10 @@ class SignUpSchema(BaseModel):
 class SignInSchema(BaseModel):
     email: EmailStr
     password: str
+
+class ResetPasswordSchema(BaseModel):
+    token: str
+    new_password: str
+
+class ForgotPasswordSchema(BaseModel):
+    email: str

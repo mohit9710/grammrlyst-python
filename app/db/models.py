@@ -16,6 +16,9 @@ class User(Base):
     is_email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
 
+    reset_password_token = Column(String, nullable=True)
+    reset_password_expires = Column(DateTime, nullable=True)
+
 class Verbs(Base):
     __tablename__ = "verbs"
     id = Column(Integer, primary_key=True, index=True)
