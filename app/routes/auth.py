@@ -6,9 +6,10 @@ from app.db.session import SessionLocal
 from app.db.models import User
 from app.db.models import Verbs
 from app.schemas.auth import SignUpSchema, SignInSchema
-from app.core.security import hash_password, verify_password, create_token
+from app.core.security import hash_password, verify_password, create_token, generate_email_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.dependencies import get_current_user
+from app.core.mail import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -25,13 +26,16 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    token = generate_email_token()
     # print(payload)
     user = User(
         # name=payload.first_name+" "+payload.last_name,
         first_name=payload.first_name,
         last_name=payload.last_name,
         email=payload.email,
-        password=hash_password(payload.password)
+        password=hash_password(payload.password),
+        email_verification_token=token,
+        is_email_verified=False
     )
 
     db.add(user)
@@ -47,6 +51,8 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
         {"user_id": user.id},
         timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
+
+    send_verification_email(user.email, token)
 
     return {
         "message": "User registered successfully",
@@ -67,6 +73,12 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
 
     if not user or not verify_password(payload.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not user.is_email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email first"
+        )
 
     access_token = create_token(
         {"user_id": user.id},
@@ -98,4 +110,23 @@ def get_profile(
         "id": user.id,
         "name": user.first_name,
         "email": user.email,
+    }
+
+@router.get("/verify-email")
+def verify_email(token: str, db: Session = Depends(get_db)):
+
+    user = db.query(User).filter(
+        User.email_verification_token == token
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    user.is_email_verified = True
+    user.email_verification_token = None
+
+    db.commit()
+
+    return {
+        "message": "Email verified successfully 🎉"
     }

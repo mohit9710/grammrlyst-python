@@ -13,6 +13,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
 
+    is_email_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String, nullable=True)
+
 class Verbs(Base):
     __tablename__ = "verbs"
     id = Column(Integer, primary_key=True, index=True)
