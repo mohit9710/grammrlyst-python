@@ -9,7 +9,13 @@ app = FastAPI(title="Auth Service")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js
+    allow_origins=[
+        "http://localhost:3000",
+        "https://www.grammrlyst.com",
+        "https://grammrlyst.com",
+        "https://grammrlyst.in",
+        "https://www.grammrlyst.in",
+    ],  # Next.js
     allow_credentials=True,
     allow_methods=["*"],  # IMPORTANT
     allow_headers=["*"],  # IMPORTANT

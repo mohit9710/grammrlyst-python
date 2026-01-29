@@ -6,11 +6,15 @@ import secrets
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def _normalize_password(password: str) -> str:
+    # ensures bcrypt never receives >72 bytes
+    return password[:72]
+
 def hash_password(password: str):
-    return pwd_context.hash(password)
+    return pwd_context.hash(_normalize_password(password))
 
 def verify_password(password: str, hashed: str):
-    return pwd_context.verify(password, hashed)
+    return pwd_context.verify(_normalize_password(password), hashed)
 
 def create_token(data: dict, expires_delta: timedelta):
     to_encode = data.copy()

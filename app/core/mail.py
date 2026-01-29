@@ -28,21 +28,29 @@ def send_verification_email(email: str, token: str):
     server.quit()
 
 def send_reset_password_email(email: str, token: str):
-    reset_link = f"https://grammrlyst.in/auth/reset-password?token={token}"
+    reset_link = f"https://grammrlyst.com/auth/reset-password?token={token}"
 
     msg = MIMEText(f"""
     Hi 👋
 
-    You requested a password reset.
+    We received a request to reset your Grammrlyst account password.
 
-    Click the link below to set a new password:
+    To create a new password, just click the button below:
+
+    🔐 Reset your password
     {reset_link}
 
-    This link will expire in 15 minutes.
+    ⏳ This link will expire in 15 minutes for security reasons.
 
-    If you didn’t request this, ignore this email.
+    If you didn’t request a password reset, no worries — you can safely ignore this email. Your account will remain secure.
+
+    Need help? Just reply to this email — we’re happy to help 😊
+
+    —
+    Team Grammrlyst
+    ✍️ Write smarter. Faster.
     """)
-    msg["Subject"] = "Reset your password - Grammrlyst"
+    msg["Subject"] = "Reset your Grammrlyst password"
     msg["From"] = "noreply@grammrlyst.in"
     msg["To"] = email
 

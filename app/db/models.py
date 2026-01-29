@@ -73,7 +73,7 @@ class QuizOption(Base):
     question = relationship("QuizQuestion", back_populates="options")
 
 class Sentence(Base):
-    __tablename__ = "Sentences"
+    __tablename__ = "sentences"
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(TEXT, nullable=False)
@@ -82,14 +82,14 @@ class Sentence(Base):
 
 # New Spelling Model
 class SpellingChallenge(Base):
-    __tablename__ = "SpellingChallenges"
+    __tablename__ = "spellingchallenges"
     id = Column(Integer, primary_key=True, index=True)
     wrong_version = Column(String(255), nullable=False)
     right_version = Column(String(255), nullable=False)
     difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
 
 class ScrambleChallenge(Base):
-    __tablename__ = "ScrambleChallenges"
+    __tablename__ = "scramblechallenges"
 
     id = Column(Integer, primary_key=True, index=True)
     original_word = Column(String(100), nullable=False)
