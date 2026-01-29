@@ -25,8 +25,11 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    if len(payload.password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+
     token = generate_email_token()
-    # print(payload)
+
     user = User(
         # name=payload.first_name+" "+payload.last_name,
         first_name=payload.first_name,
