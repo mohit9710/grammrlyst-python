@@ -13,6 +13,8 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
 
+    profile_image = Column(String(255), nullable=True)
+    
     is_email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
 

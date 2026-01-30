@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.db.session import SessionLocal
@@ -7,10 +7,14 @@ from app.db.models import Verbs
 from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema
 from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_user_id
 from app.core.mail import send_verification_email, send_reset_password_email
+import uuid, os
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+UPLOAD_DIR = "media/profile"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def get_db():
     db = SessionLocal()
@@ -97,18 +101,29 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
 
 @router.get("/userprofile")
 def get_profile(
-    user_id: int = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    # current_user is now the actual User object from your updated dependency
+    current_user: User = Depends(get_current_user)
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    # No need to query the DB here anymore! 
+    # get_current_user already did the work.
+    # base_url = "http://127.0.0.1:9000"
+    base_url = str(request.base_url).rstrip("/")
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # Build the full URL only if an image exists
+    img_url = None
+    if current_user.profile_image:
+        # We replace backslashes with forward slashes for URL compatibility
+        clean_path = current_user.profile_image.replace("\\", "/")
+        img_url = f"{base_url}/{clean_path}"
 
     return {
-        "id": user.id,
-        "name": user.first_name,
-        "email": user.email,
+        "id": current_user.id,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "email": current_user.email,
+        "profile_image": img_url, 
+        "streak": 5, 
+        "points": 1250
     }
 
 @router.get("/verify-email")
@@ -177,3 +192,57 @@ def reset_password(
     return {
         "message": "Password reset successfully"
     }
+
+@router.patch("/users/me")
+async def update_profile(
+    first_name: str | None = Form(None),
+    last_name: str | None = Form(None),
+    image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    # Get the ID instead of the object
+    current_user_id: int = Depends(get_current_user_id), 
+):
+    try:
+        # Fetch the user inside the route's own session
+        user = db.query(User).filter(User.id == current_user_id).first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
+
+        if image:
+            ext = image.filename.split(".")[-1]
+            filename = f"{uuid.uuid4()}.{ext}"
+            file_path = os.path.join(UPLOAD_DIR, filename)
+
+            content = await image.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+
+            user.profile_image = file_path
+
+        db.commit()
+        db.refresh(user)
+
+        # Build the return URL
+        # base_url = "http://127.0.0.1:9000"
+        base_url = str(request.base_url).rstrip("/")
+        img_url = f"{base_url}/{user.profile_image.replace(os.sep, '/')}" if user.profile_image else None
+        print(img_url)
+        return {
+            "message": "Profile updated successfully",
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "profile_image": img_url,
+            },
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"Detailed Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
