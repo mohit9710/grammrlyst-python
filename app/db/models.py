@@ -96,3 +96,14 @@ class ScrambleChallenge(Base):
     scrambled_word = Column(String(100), nullable=False)
     hint = Column(TEXT, nullable=True)
     difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
+
+class DailyTip(Base):
+    __tablename__ = "daily_tips"
+
+    id = Column(Integer, primary_key=True, index=True)
+    wrong_sentence = Column(TEXT, nullable=False)
+    correct_sentence = Column(TEXT, nullable=False)
+    explanation = Column(TEXT, nullable=False)
+    level = Column(Enum("beginner", "intermediate", "advanced"), default="beginner")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
