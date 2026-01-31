@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -98,3 +98,33 @@ class ScrambleChallenge(Base):
     scrambled_word = Column(String(100), nullable=False)
     hint = Column(TEXT, nullable=True)
     difficulty = Column(Enum('easy', 'medium', 'hard'), default='medium')
+
+class DailyTip(Base):
+    __tablename__ = "daily_tips"
+
+    id = Column(Integer, primary_key=True, index=True)
+    wrong_sentence = Column(TEXT, nullable=False)
+    correct_sentence = Column(TEXT, nullable=False)
+    explanation = Column(TEXT, nullable=False)
+    level = Column(Enum("beginner", "intermediate", "advanced"), default="beginner")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserVerbProgress(Base):
+    __tablename__ = "user_verb_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Add ForeignKey here 👇
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    verb_id = Column(Integer, ForeignKey("verbs.id", ondelete="CASCADE"), index=True)
+
+    views = Column(Integer, default=0)
+    stage = Column(Integer, default=0) 
+
+    first_view = Column(DateTime, default=datetime.utcnow)
+    last_view = Column(DateTime, default=datetime.utcnow)
+
+    # Prevent duplicate rows for the same user + verb
+    __table_args__ = (
+        UniqueConstraint('user_id', 'verb_id', name='_user_verb_uc'),
+    )

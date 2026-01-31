@@ -29,11 +29,8 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    if len(payload.password) < 8:
-        raise ValueError("Password must be at least 8 characters long")
-
     token = generate_email_token()
-
+    # print(payload)
     user = User(
         # name=payload.first_name+" "+payload.last_name,
         first_name=payload.first_name,
@@ -109,8 +106,13 @@ def get_profile(
 ):
     # No need to query the DB here anymore! 
     # get_current_user already did the work.
+<<<<<<< HEAD
     # base_url = "http://127.0.0.1:9000"
     base_url = str(request.base_url).rstrip("/")
+=======
+    base_url = "http://127.0.0.1:9000"
+    # base_url = str(request.base_url).rstrip("/")
+>>>>>>> feature/tipoftheday_30012026
 
     # Build the full URL only if an image exists
     img_url = None
@@ -232,8 +234,13 @@ async def update_profile(
         db.refresh(user)
 
         # Build the return URL
+<<<<<<< HEAD
         # base_url = "http://127.0.0.1:9000"
         base_url = str(request.base_url).rstrip("/")
+=======
+        base_url = "http://127.0.0.1:9000"
+        # base_url = str(request.base_url).rstrip("/")
+>>>>>>> feature/tipoftheday_30012026
         img_url = f"{base_url}/{user.profile_image.replace(os.sep, '/')}" if user.profile_image else None
         print(img_url)
         return {
