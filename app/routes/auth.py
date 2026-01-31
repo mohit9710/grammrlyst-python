@@ -106,8 +106,7 @@ def get_profile(
 ):
     # No need to query the DB here anymore! 
     # get_current_user already did the work.
-    # base_url = "http://127.0.0.1:9000"
-    base_url = str(request.base_url).rstrip("/")
+    base_url = "http://127.0.0.1:8000"
 
     # Build the full URL only if an image exists
     img_url = None
@@ -229,8 +228,7 @@ async def update_profile(
         db.refresh(user)
 
         # Build the return URL
-        # base_url = "http://127.0.0.1:9000"
-        base_url = str(request.base_url).rstrip("/")
+        base_url = "http://127.0.0.1:8000"
         img_url = f"{base_url}/{user.profile_image.replace(os.sep, '/')}" if user.profile_image else None
         print(img_url)
         return {
