@@ -4,7 +4,6 @@ from typing import List
 
 from app.db.session import SessionLocal
 from app.db.models import DailyTip
-from app.schemas.api import DailyTipResponse
 from datetime import date
 
 router = APIRouter(
@@ -19,7 +18,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/today")
+@router.get("/tips/today")
 def get_tip_of_the_day(db: Session = Depends(get_db)):
     tips = db.query(DailyTip).filter(DailyTip.is_active == True).all()
 
