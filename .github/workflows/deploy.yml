@@ -23,15 +23,18 @@ jobs:
             cd /home/ubuntu/grammrlyst-python
             
             # 2. Latest code pull karna (agar repo set hai)
-            git pull origin main
-            
+            # git pull origin main
+            git fetch --all
+            git reset --hard origin/main
+
             # 3. Dependencies update karna (optional but recommended)
-            # source venv/bin/activate  <-- Agar virtual env hai toh uncomment karein
-            pip install -r requirement.txt
+            #source venv/bin/activate  <-- Agar virtual env hai toh uncomment karein
+            ./venv/bin/pip install -r requirement.txt
             
             # 4. Services restart karna
-            echo "Restarting FastAPI and Nginx..."
+            # Service restart karein
+            sudo systemctl daemon-reload
             sudo systemctl restart fastapi
-            sudo systemctl restart nginx
+            sudo systemctl status fastapi
             
             echo "Deployment Successful!"
