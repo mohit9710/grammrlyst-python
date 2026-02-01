@@ -36,21 +36,30 @@ def get_current_user_optional(
     authorization: str = Header(None), 
     db: Session = Depends(get_db)
 ):
+    # If no header is sent, return None (Guest Mode)
     if not authorization or not authorization.startswith("Bearer "):
+        print("DEBUG: No valid Authorization header found.")
         return None
+
     try:
+        # Extract token
         token = authorization.split(" ")[1]
+        # Decode token
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
+        
         if not user_id:
             return None
+
+        # Fetch user
         return db.query(User).filter(User.id == user_id).first()
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Auth error: {e}")
         return None
 # =====================================================
 # GET VERB LIST WITH OPTIONAL USER PROGRESS
 # =====================================================
-@router.get("/", response_model=List[VerbResponse])
+@router.get("/getverbs", response_model=List[VerbResponse])
 def list_verbs(
     page: int = Query(1, ge=1),
     limit: int = Query(20, le=100),
@@ -62,7 +71,6 @@ def list_verbs(
     
     response = []
     for v in verbs:
-        # Convert SQLAlchemy model to a dictionary
         verb_data = {
             "id": v.id,
             "base": v.base,
@@ -71,10 +79,10 @@ def list_verbs(
             "meaning": v.meaning,
             "example": v.example,
             "type": v.type,
-            "progress": None  # Default to None
+            "progress": None 
         }
 
-        # If user is logged in, find their specific progress for THIS verb
+        # If user exists, attach progress metadata
         if user:
             p = db.query(UserVerbProgress).filter_by(user_id=user.id, verb_id=v.id).first()
             if p:
