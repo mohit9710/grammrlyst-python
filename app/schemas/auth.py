@@ -1,4 +1,6 @@
 from pydantic import BaseModel, EmailStr, constr, field_validator
+from datetime import datetime
+from typing import Optional
 
 class SignUpSchema(BaseModel):
     first_name: str
@@ -30,3 +32,24 @@ class ResetPasswordSchema(BaseModel):
 
 class ForgotPasswordSchema(BaseModel):
     email: EmailStr
+
+class XPUpdateRequest(BaseModel):
+    points_to_add: int
+    is_bonus: bool = False
+
+class ActivityLogResponse(BaseModel):
+    id: int
+    activity_type: str
+    description: str
+    points_earned: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True # SQLAlchemy object ko JSON mein convert karne ke liye
+
+# 3. User Stats Schema: Dashboard ke liye
+class UserStatsResponse(BaseModel):
+    total_xp: int
+    bonus: int
+    points: int
+    streak: int

@@ -100,18 +100,10 @@ def signin(payload: SignInSchema, db: Session = Depends(get_db)):
     }
 
 @router.get("/userprofile")
-def get_profile(
-    # current_user is now the actual User object from your updated dependency
-    current_user: User = Depends(get_current_user)
-):
-    # No need to query the DB here anymore! 
-    # get_current_user already did the work.
-    base_url = "http://127.0.0.1:8000"
-
-    # Build the full URL only if an image exists
+def get_profile(current_user: User = Depends(get_current_user)):
+    base_url = "http://127.0.0.1:9000"
     img_url = None
     if current_user.profile_image:
-        # We replace backslashes with forward slashes for URL compatibility
         clean_path = current_user.profile_image.replace("\\", "/")
         img_url = f"{base_url}/{clean_path}"
 
@@ -121,8 +113,11 @@ def get_profile(
         "last_name": current_user.last_name,
         "email": current_user.email,
         "profile_image": img_url, 
-        "streak": 5, 
-        "points": 1250
+        "streak": current_user.streak,
+        "points": current_user.points,
+        "bonus": current_user.bonus,
+        "total_xp": current_user.total_xp,
+        "last_login": current_user.last_login_date # Added for FE tracking
     }
 
 @router.get("/verify-email")

@@ -1,25 +1,36 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint
 from datetime import datetime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from app.db.session import Base
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    # name = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-
     profile_image = Column(String(255), nullable=True)
     
     is_email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
-
     reset_password_token = Column(String, nullable=True)
     reset_password_expires = Column(DateTime, nullable=True)
+
+    # FIXED: Duplicate columns removed and set to Integer
+    streak = Column(Integer, default=0)
+    points = Column(Integer, default=0)
+    total_xp = Column(Integer, default=0)
+    bonus = Column(Integer, default=0)
+    
+    # Consistency check: Use Date for logic, DateTime for timestamps
+    last_login_date = Column(DateTime, nullable=True) 
+    last_bonus_date = Column(DateTime, nullable=True)
+
+    # Relationships
+    activity_logs = relationship("UserActivityLog", back_populates="user", cascade="all, delete-orphan")
+     
 
 class Verbs(Base):
     __tablename__ = "verbs"
@@ -128,3 +139,14 @@ class UserVerbProgress(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'verb_id', name='_user_verb_uc'),
     )
+
+class UserActivityLog(Base):
+    __tablename__ = "user_activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    activity_type = Column(String(50))  # e.g., "GAME_WIN", "BONUS_CLAIM"
+    description = Column(String(255))
+    points_earned = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="activity_logs")
