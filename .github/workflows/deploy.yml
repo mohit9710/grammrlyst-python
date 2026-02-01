@@ -21,22 +21,26 @@ jobs:
           script: |
             cd /home/ubuntu/grammrlyst-python
             
-            # Pehle ensure karein ki hum main branch par hain
-            git checkout main || git checkout -b main
-            
-            # Sab kuch fetch aur reset karein
+            # 1. Branch sync karna
             git fetch --all
+            git checkout -B main origin/main
             git reset --hard origin/main
             
-            # Dependencies install karein
-            ./venv/bin/pip install -r requirement.txt
+            # 2. Dependencies install karna (Conditional Check)
+            if [ -f "requirements.txt" ]; then
+                ./venv/bin/pip install -r requirements.txt
+            elif [ -f "requirement.txt" ]; then
+                ./venv/bin/pip install -r requirement.txt
+            fi
             
-            # Restart Services
+            # 3. Purani stuck processes kill karna aur restart
+            sudo fuser -k 8000/tcp || true
             sudo systemctl daemon-reload
             sudo systemctl restart fastapi
             sudo systemctl restart nginx
             
-            # Verification
-            sleep 2
+            # 4. Verification
+            echo "Waiting for service to stabilize..."
+            sleep 3
             sudo systemctl status fastapi --no-pager
             echo "Deployment Successful on Main Branch!"
