@@ -1,0 +1,37 @@
+name: FastAPI CD on EC2
+
+on:
+  push:
+    branches:
+      - main  # Jab aap main branch pe push karenge, deploy shuru ho jayega
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Project folder mein jana
+            cd /home/ubuntu/grammrlyst-python
+            
+            # 2. Latest code pull karna (agar repo set hai)
+            git pull origin main
+            
+            # 3. Dependencies update karna (optional but recommended)
+            # source venv/bin/activate  <-- Agar virtual env hai toh uncomment karein
+            pip install -r requirement.txt
+            
+            # 4. Services restart karna
+            echo "Restarting FastAPI and Nginx..."
+            sudo systemctl restart fastapi
+            sudo systemctl restart nginx
+            
+            echo "Deployment Successful!"
