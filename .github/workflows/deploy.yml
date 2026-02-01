@@ -19,22 +19,24 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Project folder mein jana
             cd /home/ubuntu/grammrlyst-python
             
-            # 2. Latest code pull karna (agar repo set hai)
-            # git pull origin main
+            # Pehle ensure karein ki hum main branch par hain
+            git checkout main || git checkout -b main
+            
+            # Sab kuch fetch aur reset karein
             git fetch --all
             git reset --hard origin/main
-
-            # 3. Dependencies update karna (optional but recommended)
-            #source venv/bin/activate  <-- Agar virtual env hai toh uncomment karein
-            ./venv/bin/pip install -r requirements.txt
             
-            # 4. Services restart karna
-            # Service restart karein
+            # Dependencies install karein
+            ./venv/bin/pip install -r requirement.txt
+            
+            # Restart Services
             sudo systemctl daemon-reload
             sudo systemctl restart fastapi
-            sudo systemctl status fastapi
+            sudo systemctl restart nginx
             
-            echo "Deployment Successful!"
+            # Verification
+            sleep 2
+            sudo systemctl status fastapi --no-pager
+            echo "Deployment Successful on Main Branch!"
