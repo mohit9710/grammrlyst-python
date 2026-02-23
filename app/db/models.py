@@ -30,7 +30,7 @@ class User(Base):
 
     # Relationships
     activity_logs = relationship("UserActivityLog", back_populates="user", cascade="all, delete-orphan")
-     
+    is_paid = Column(Integer, default=0)
 
 class Verbs(Base):
     __tablename__ = "verbs"
