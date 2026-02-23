@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "gymcraft-b8f60",
+  "private_key_id": "750afe05c508bc921191065870f73b7edaa19594",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCnuPmL2o/DP0XV\nRAnPujJJUPWKHevb0Ndw3r+tY04PDZV9RL/l3mleXd4xzCr6cSh6hucwAqIxgSbu\n9oP59WbqFdhK2covGc4IJMc/qbhSN8I1j7YuO2o+vwrHf2HAsE4ko9WYzwlfVO2l\ny315dMPIGoVZIzPDSHiyr+hUJclh5TVRjpBU+Px6VYdm4Plz6lEO+tT8pfXd6Hcb\ngS4ladejT9QxvtaGBK9waUTVp4Kizum/9X2cyeto5nYSOPYRSga77a2hGHlQhos7\no35RNI00qkJL+yru2/lbM5xcR9lNvtDypiRExI+MnqCXQWJ5BFxLwaicnQqvyRSw\nVKv6n//7AgMBAAECggEAExg63NezV0oBpB/cssK4Io2uLp0XyDefV3EcnFulEY9S\ng2eg0JrrdGa2Za/1/VDbCBFfX6FlIBgGkTJiixdhBz8ZF/Mckr6FgiWBw6HfDgky\nueX/GoYBeLGc7g0hWWPDubsnQFWNyRss+nD6Jio2IeFsaLNacMie6ST1YSMeKV//\nfvv5oHuf7Fd0Ow8ZZqY+uyXEqAV0kfEE6oVJm+T3Pazgyx/spTCohQLnuKK/8tqI\nV3UFw/Hqp+Sq54GtC7oJcTnrPM8vh57NoQdpK9FeZ7pwfrgyWLdc3Yy/W0A+St1G\n3OQbR7qBs0myni64Lr57o0Vyj3Ch4ikyX9i94sr9AQKBgQDc+8SbNXm7z1r1jrzK\n1L6Y0gQu55Zaj5X/k0T0oTRb5iI9KRb6aRVP8hmq+/JpmfgIMu7aGbtsYdkZ75I2\nn8kDJ5avJR7DCh/30SdcT91grkaRTC5+9vwAq413doauYKPCJnzLgEodUm5QosHz\nMOCqJSNi/2W2VPZGmhuW0jlQ+wKBgQDCTKs74pqFiXMhXGqA/PpMfm9AvZTN89dL\nnNxQt0LXxIQ829UVeKqfrvX2FSnjtjJAD5QD5fmEbTanhxx2GHVZIW5uApGSfsvp\nFy0rsLPebJHsa570sAsabxm2ZK3NqNX82lJR0z68cAU7fh/vR7pNZMUJpem/Oqpk\nJPkEHBrdAQKBgFq5WnxGNhYvCS7rTQMQ2Lcw8dq35XiEnpZwxcyRKkfYcZIefnqM\nDd3mjTcvfNRyC+yBzKHqEpJqkZEeVC7s5r/OzwRU/w4f6AP78Gbruv1oTzxzxFsH\n12oHBGtZU+3faxvYZT+/Ca6EGxor1+iZ1oLEAIUySXXT59AQkOcYo8NlAoGAHZsV\nFGDo7qQM+O5eBB2H/hPd292HSQJ4sbrLDzl9Y+c7xxIwG79xMDe2nrKG2X2vlndJ\nNHbcWENT6p75xTzg1J31d6nIiKvtYiz34wpfveqJKZ8Ub3BLoNGA93vLx+SMBqU1\nmeY4Tvo6sd/7+bfSOWy7YUb4oPzNbcj8cJXfugECgYEA2v+kAnbyfJ//vCRbdGSR\nBQWFfmY+MGOxL/HmWl5JG/LaYQ1AGHt6+6kvTV1JHYOvpFSFSUvnvRbxPhB04Mzo\nxNb9CE6A8cSYer1nWnRjoPpUfr3dRf6EtX+Z4kaQMSuK0XVBx/THw9HxJa6Uogvj\nZMv18vi57do1E0Usz9b+gc0=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@gymcraft-b8f60.iam.gserviceaccount.com",
+  "client_id": "109482562210182920881",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40gymcraft-b8f60.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

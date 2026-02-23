@@ -3,6 +3,7 @@ from app.db.session import Base, engine
 from app.routes import auth,verbs,grammar,quiz,paytm,games, api, chat
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from app.core import firebase
 
 Base.metadata.create_all(bind=engine)
 

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from app.db.session import SessionLocal
 from app.db.models import User
 from app.db.models import Verbs
+from firebase_admin import storage
 from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema
 from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
@@ -112,7 +113,7 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "first_name": current_user.first_name,
         "last_name": current_user.last_name,
         "email": current_user.email,
-        "profile_image": img_url, 
+        "profile_image": current_user.profile_image, 
         "streak": current_user.streak,
         "points": current_user.points,
         "bonus": current_user.bonus,
@@ -193,49 +194,67 @@ async def update_profile(
     last_name: str | None = Form(None),
     image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    # Get the ID instead of the object
     current_user_id: int = Depends(get_current_user_id), 
 ):
     try:
-        # Fetch the user inside the route's own session
         user = db.query(User).filter(User.id == current_user_id).first()
         
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
+        # Basic fields update
         if first_name:
             user.first_name = first_name
         if last_name:
             user.last_name = last_name
 
+        # Firebase Image Update Logic
         if image:
-            ext = image.filename.split(".")[-1]
-            filename = f"{uuid.uuid4()}.{ext}"
-            file_path = os.path.join(UPLOAD_DIR, filename)
+            # 1. Validation (Strictly Image Only)
+            if not image.content_type.startswith("image/"):
+                raise HTTPException(status_code=400, detail="Only images are allowed")
 
+            # 2. Purani image delete karein (Optional but Recommended)
+            # Agar user.profile_image mein pehle se koi Firebase URL hai
+            if user.profile_image and "firebasestorage.googleapis.com" in user.profile_image:
+                try:
+                    # URL se file path nikalna (e.g., 'avatars/xyz.png')
+                    # Firebase URL se path extract karne ke liye logic
+                    old_blob_path = user.profile_image.split("/o/")[1].split("?")[0].replace("%2F", "/")
+                    bucket = storage.bucket()
+                    old_blob = bucket.blob(old_blob_path)
+                    if old_blob.exists():
+                        old_blob.delete()
+                except Exception as e:
+                    print(f"Old file delete failed: {e}")
+
+            # 3. Nayi file upload karein
+            ext = image.filename.split(".")[-1].lower()
+            filename = f"grammlyst/userprofile/{uuid.uuid4()}.{ext}"
+            
+            bucket = storage.bucket()
+            blob = bucket.blob(filename)
+            
             content = await image.read()
-            with open(file_path, "wb") as f:
-                f.write(content)
-
-            user.profile_image = file_path
+            blob.upload_from_string(content, content_type=image.content_type)
+            
+            # 4. Public URL banayein aur DB mein save karein
+            blob.make_public()
+            user.profile_image = blob.public_url
 
         db.commit()
         db.refresh(user)
 
-        # Build the return URL
-        base_url = "http://127.0.0.1:8000"
-        img_url = f"{base_url}/{user.profile_image.replace(os.sep, '/')}" if user.profile_image else None
-        print(img_url)
         return {
             "message": "Profile updated successfully",
             "user": {
                 "id": user.id,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "profile_image": img_url,
+                "profile_image": user.profile_image, # Direct Firebase URL
             },
         }
     except Exception as e:
         db.rollback()
         print(f"Detailed Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail=str(e))
