@@ -11,6 +11,7 @@ from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DA
 from app.core.dependencies import get_current_user, get_current_user_id
 from app.core.mail import send_verification_email, send_reset_password_email
 import uuid, os
+from urllib.parse import urlparse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -194,56 +195,71 @@ async def update_profile(
     last_name: str | None = Form(None),
     image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id), 
+    current_user_id: int = Depends(get_current_user_id),
 ):
     try:
         user = db.query(User).filter(User.id == current_user_id).first()
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Basic fields update
+        # -------- Update Basic Fields --------
         if first_name:
             user.first_name = first_name
+
         if last_name:
             user.last_name = last_name
 
-        # Firebase Image Update Logic
+        # -------- Image Update --------
         if image:
-            # 1. Validation (Strictly Image Only)
             if not image.content_type.startswith("image/"):
-                raise HTTPException(status_code=400, detail="Only images are allowed")
+                raise HTTPException(status_code=400, detail="Only image files are allowed")
 
-            # 2. Purani image delete karein (Optional but Recommended)
-            # Agar user.profile_image mein pehle se koi Firebase URL hai
-            if user.profile_image and "firebasestorage.googleapis.com" in user.profile_image:
-                try:
-                    # URL se file path nikalna (e.g., 'avatars/xyz.png')
-                    # Firebase URL se path extract karne ke liye logic
-                    old_blob_path = user.profile_image.split("/o/")[1].split("?")[0].replace("%2F", "/")
-                    bucket = storage.bucket()
-                    old_blob = bucket.blob(old_blob_path)
-                    if old_blob.exists():
-                        old_blob.delete()
-                except Exception as e:
-                    print(f"Old file delete failed: {e}")
-
-            # 3. Nayi file upload karein
-            ext = image.filename.split(".")[-1].lower()
-            filename = f"grammlyst/userprofile/{uuid.uuid4()}.{ext}"
-            
             bucket = storage.bucket()
+
+            # ----- Delete Old Image -----
+            if user.profile_image:
+                try:
+                    old_value = user.profile_image
+
+                    # If full URL stored → extract blob path
+                    if old_value.startswith("http"):
+                        parsed = urlparse(old_value)
+                        blob_path = unquote(parsed.path.lstrip("/").split("/", 1)[1])
+                    else:
+                        # If only path stored
+                        blob_path = old_value
+
+                    bucket.blob(blob_path).delete()
+                    print("Old image deleted:", blob_path)
+
+                except Exception as e:
+                    print("Old image delete failed:", e)
+
+            # ----- Upload New Image -----
+            ext = image.filename.split(".")[-1].lower()
+            filename = f"grammrlyst/userprofile/{uuid.uuid4()}.{ext}"
+
             blob = bucket.blob(filename)
-            
+
             content = await image.read()
             blob.upload_from_string(content, content_type=image.content_type)
-            
-            # 4. Public URL banayein aur DB mein save karein
+
             blob.make_public()
-            user.profile_image = blob.public_url
+
+            # Store only path in DB (Best practice)
+            user.profile_image = filename
 
         db.commit()
         db.refresh(user)
+
+        # Generate public URL if image exists
+        bucket = storage.bucket()
+        profile_image_url = (
+            f"https://storage.googleapis.com/{bucket.name}/{user.profile_image}"
+            if user.profile_image
+            else None
+        )
 
         return {
             "message": "Profile updated successfully",
@@ -251,10 +267,11 @@ async def update_profile(
                 "id": user.id,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "profile_image": user.profile_image, # Direct Firebase URL
+                "profile_image": profile_image_url,
             },
         }
+
     except Exception as e:
         db.rollback()
-        print(f"Detailed Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print("Detailed Error:", str(e))
+        raise HTTPException(status_code=500, detail="Something went wrong")
