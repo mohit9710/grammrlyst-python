@@ -230,7 +230,7 @@ async def update_profile(
 
             # 3. Nayi file upload karein
             ext = image.filename.split(".")[-1].lower()
-            filename = f"grammlyst/userprofile/{uuid.uuid4()}.{ext}"
+            filename = f"grammrlyst/userprofile/{uuid.uuid4()}.{ext}"
             
             bucket = storage.bucket()
             blob = bucket.blob(filename)
