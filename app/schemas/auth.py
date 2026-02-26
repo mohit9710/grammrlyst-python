@@ -53,3 +53,20 @@ class UserStatsResponse(BaseModel):
     bonus: int
     points: int
     streak: int
+
+class RoleResponse(BaseModel):
+    id: int
+    title: str
+    scenario: str
+    instruction: str
+    avatar: str
+    voiceType: str
+
+    class Config:
+        from_attributes = True
+
+class RoleListResponse(BaseModel):
+    roles: list[RoleResponse]
+
+    class Config:
+        from_attributes = True

@@ -150,3 +150,13 @@ class UserActivityLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="activity_logs")
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(100), nullable=False)
+    scenario = Column(TEXT, nullable=False)
+    instruction = Column(TEXT)
+    avatar = Column(String(10))
+    voice_type = Column(String(50))
