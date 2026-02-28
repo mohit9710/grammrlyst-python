@@ -10,4 +10,5 @@ passlib==1.7.4
 email-validator
 python-multipart
 requests
+firebase_admin
 pycryptodome
