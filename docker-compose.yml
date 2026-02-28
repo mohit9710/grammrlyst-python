@@ -39,6 +39,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - fastapi
+      - phpmyadmin
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
