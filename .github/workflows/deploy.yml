@@ -1,46 +1,29 @@
-name: FastAPI CD on EC2
+name: 🚀 Deploy to Server
 
 on:
   push:
     branches:
-      - main  # Jab aap main branch pe push karenge, deploy shuru ho jayega
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@master
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/grammrlyst-python
-            
-            # 1. Branch sync karna
-            git fetch --all
-            git checkout -B main origin/main
-            git reset --hard origin/main
-            
-            # 2. Dependencies install karna (Conditional Check)
-            if [ -f "requirements.txt" ]; then
-                ./venv/bin/pip install -r requirements.txt
-            elif [ -f "requirement.txt" ]; then
-                ./venv/bin/pip install -r requirement.txt
-            fi
-            
-            # 3. Purani stuck processes kill karna aur restart
-            sudo fuser -k 8000/tcp || true
-            sudo systemctl daemon-reload
-            sudo systemctl restart fastapi
-            sudo systemctl restart nginx
-            
-            # 4. Verification
-            echo "Waiting for service to stabilize..."
-            sleep 3
-            sudo systemctl status fastapi --no-pager
-            echo "Deployment Successful on Main Branch!"
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🚀 Deploy on server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd ${{ secrets.SERVER_PATH }} || git clone https://github.com/${{ github.repository }} ${{ secrets.SERVER_PATH }}
+            cd ${{ secrets.SERVER_PATH }}
+            git pull
+            docker-compose down
+            docker-compose up -d --build
+          EOF
