@@ -1,18 +1,31 @@
-- name: Deploy on server
-  run: |
-    ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
-      set -e
+name: Deploy to Server
 
-      if [ ! -d '${{ secrets.SERVER_PATH }}' ]; then
-        git clone https://github.com/mohit9710/grammrlyst-python ${{ secrets.SERVER_PATH }};
-      fi
+on:
+  push:
+    branches:
+      - main
 
-      cd ${{ secrets.SERVER_PATH }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      git pull
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      docker compose down --remove-orphans
-      docker compose up -d --build
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      docker image prune -f
-    "
+      - name: Deploy on server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            if [ ! -d '${{ secrets.SERVER_PATH }}' ]; then
+              git clone https://github.com/mohit9710/grammrlyst-python ${{ secrets.SERVER_PATH }};
+            fi
+            cd ${{ secrets.SERVER_PATH }}
+            git pull
+            docker-compose down
+            docker-compose up -d --build
+          "
