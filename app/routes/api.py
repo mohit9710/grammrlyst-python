@@ -145,3 +145,7 @@ async def get_activity_logs(
 async def roles_list(db: Session = Depends(get_db)):
     roles = db.query(Role).all()
     return {"roles": roles}
+
+@router.get('hello')
+def ping():
+    return {"true" : 'yes this is true!'}
