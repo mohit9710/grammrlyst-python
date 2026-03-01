@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from app.db.session import SessionLocal
 # UserActivityLog ko import karna zaroori hai
-from app.db.models import DailyTip, User, UserActivityLog 
+from app.db.models import DailyTip, User, UserActivityLog , Role
 from app.core.dependencies import get_current_user
 # Schema import karein (redefine karne ki zaroorat nahi)
 from app.schemas.auth import XPUpdateRequest
@@ -140,3 +140,12 @@ async def get_activity_logs(
     ).order_by(UserActivityLog.created_at.desc()).limit(20).all()
     
     return logs
+
+@router.post("/roles_list")
+async def roles_list(db: Session = Depends(get_db)):
+    roles = db.query(Role).all()
+    return {"roles": roles}
+
+@router.get('hello')
+def ping():
+    return {"true" : 'yes this is true!'}
