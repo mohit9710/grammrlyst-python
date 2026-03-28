@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM
 import secrets
 
-ALGORITHM = JWT_ALGORITHM or "HS256
+ALGORITHM = JWT_ALGORITHM or "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

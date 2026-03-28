@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, TEXT, Foreign
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.db.session import Base
+from sqlalchemy.sql import func
+import enum
 
 # ===================== USERS =====================
 class User(Base):
@@ -156,3 +158,17 @@ class Role(Base):
     instruction = Column(TEXT)
     avatar = Column(String(10))
     voice_type = Column(String(50))
+
+class DifficultyLevel(str, enum.Enum):
+    Easy = "Easy"
+    Medium = "Medium"
+    Hard = "Hard"
+
+class PronunciationText(Base):
+    __tablename__ = "pronunciation_texts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(TEXT, nullable=False)
+    difficulty_level = Column(Enum(DifficultyLevel), default=DifficultyLevel.Easy)
+    category = Column(String(50), default="General")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
