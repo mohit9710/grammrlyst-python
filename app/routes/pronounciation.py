@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from app.db.session import SessionLocal
 from app.db.models import PronunciationText
-from app.schemas.pronounciation import TextResponse
+from app.schemas.pronunciation import TextResponse
 from sqlalchemy import func
 
 router = APIRouter(
     prefix="/practice",
-    tags=["Pronounciation"]
+    tags=["Pronunciation"]
 )
 
 def get_db():
@@ -19,7 +19,7 @@ def get_db():
         db.close()
 
 # ✅ GET QUIZ BY LESSON ID
-@router.get("/pronounciation", response_model=TextResponse)
+@router.get("/pronunciation", response_model=TextResponse)
 def get_random_text(difficulty: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(PronunciationText)
     

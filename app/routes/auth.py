@@ -1,16 +1,18 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.db.session import SessionLocal
 from app.db.models import User
 from app.db.models import Verbs
 from firebase_admin import storage
-from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema
+from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema, FirebaseToken
 from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.dependencies import get_current_user, get_current_user_id
 from app.core.mail import send_verification_email, send_reset_password_email
-import uuid, os
+import uuid, os, httpx
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -258,3 +260,53 @@ async def update_profile(
         db.rollback()
         print(f"Detailed Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/google-login")
+def google_login(data: FirebaseToken, db: Session = Depends(get_db)):
+
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            data.token,
+            requests.Request(),
+            "996427956752-kdipj4a4e9v2p4s05roqpqgf8iho5i26.apps.googleusercontent.com"
+        )
+
+        email = idinfo["email"]
+        name = idinfo.get("name")
+        google_id = idinfo["sub"]
+
+        # Check if user exists
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            user = User(
+                email=email,
+                first_name=name,
+                is_email_verified=1
+            )
+
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        access_token = create_token(
+            {"user_id": user.id},
+            timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+
+        refresh_token = create_token(
+            {"user_id": user.id},
+            timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "email": email,
+            "name": name
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google Token")
