@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, s
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.db.session import SessionLocal
-from app.db.models import User
-from app.db.models import Verbs
+from app.db.models import User, Verbs, InstituteProfile
 from firebase_admin import storage
-from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema, FirebaseToken
+from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema, FirebaseToken, PartnerApplySchema
 from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.dependencies import get_current_user, get_current_user_id
@@ -13,6 +12,9 @@ from app.core.mail import send_verification_email, send_reset_password_email
 import uuid, os, httpx
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from app.db.referral import Referral, ReferralType, ReferralStatus
+from app.db.referralReward import ReferralReward, RewardStatus, RewardType
+import random
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -32,6 +34,21 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    referrer = None
+    if payload.referral_code:
+        referrer = db.query(User).filter(
+            User.referral_code == payload.referral_code
+        ).first()
+
+        if not referrer:
+            referrer = None
+
+        # if not referrer:
+        #     raise HTTPException(status_code=400, detail="Invalid referral code")
+
+        # if referrer.email == payload.email:
+        #     raise HTTPException(status_code=400, detail="You cannot use your own referral code")
+
     token = generate_email_token()
     # print(payload)
     user = User(
@@ -41,12 +58,27 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
         email=payload.email,
         password=hash_password(payload.password),
         email_verification_token=token,
-        is_email_verified=False
+        is_email_verified=False,
+        referred_by=referrer.id if referrer else None
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    user.referral_code = f"GRM{user.id}"
+    db.commit()
+
+    if referrer:
+        referral = Referral(
+            referrer_id=referrer.id,
+            referee_id=user.id,
+            referral_type=ReferralType.student,
+            referral_code=referrer.referral_code,
+            status=ReferralStatus.pending
+        )
+        db.add(referral)
+        db.commit()
 
     access_token = create_token(
         {"user_id": user.id},
@@ -66,7 +98,8 @@ def signup(payload: SignUpSchema, db: Session = Depends(get_db)):
             "id": user.id,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "email": user.email
+            "email": user.email,
+            "referral_code": user.referral_code
         },
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -310,3 +343,108 @@ def google_login(data: FirebaseToken, db: Session = Depends(get_db)):
 
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid Google Token")
+
+@router.post("/completelesson")
+def complete_lesson(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        referral = db.query(Referral).filter(
+            Referral.referee_id == current_user.id,
+            Referral.status == ReferralStatus.pending
+        ).first()
+
+        if not referral:
+            return {
+                "message": "No pending referral found",
+                "reward": None
+            }
+
+        # 🔒 Prevent duplicate reward
+        existing_reward = db.query(ReferralReward).filter(
+            ReferralReward.referral_id == referral.id,
+            ReferralReward.user_id == referral.referrer_id
+        ).first()
+
+        if existing_reward:
+            return {
+                "message": "Reward already credited",
+                "reward": {
+                    "type": existing_reward.reward_type,
+                    "value": existing_reward.reward_value
+                }
+            }
+
+        # ✅ Update referral
+        referral.status = ReferralStatus.completed
+        referral.completed_at = datetime.utcnow()
+
+        # ✅ Create reward
+        reward = ReferralReward(
+            user_id=referral.referrer_id,
+            referral_id=referral.id,
+            reward_type=RewardType.days,
+            reward_value=3,
+            status=RewardStatus.credited
+        )
+
+        db.add(reward)
+        db.commit()
+        db.refresh(reward)
+
+        return {
+            "message": "Referral completed & reward credited",
+            "reward": {
+                "type": reward.reward_type,
+                "value": reward.reward_value
+            }
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/partner/apply")
+def apply_partner(payload: PartnerApplySchema, db: Session = Depends(get_db)):
+
+    existing_user = db.query(User).filter(User.email == payload.email).first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User already exists")
+
+    temp_password = f"inst{random.randint(1000,9999)}"
+
+    token = generate_email_token()
+
+    user = User(
+        email=payload.email,
+        first_name=payload.contact_person,
+        password=hash_password(temp_password),
+        is_email_verified=False,
+        email_verification_token=token,
+        referred_by="institute"
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    user.referral_code = f"INST{user.id}"
+    db.commit()
+
+    profile = InstituteProfile(
+        user_id=user.id,
+        institute_name=payload.institute_name,
+        contact_person=payload.contact_person,
+        phone=payload.phone,
+        website=payload.website
+    )
+
+    db.add(profile)
+    db.commit()
+
+    return {
+        "message": "Partner registered successfully",
+        "referral_code": user.referral_code
+    }

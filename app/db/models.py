@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, DECIMAL
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -30,6 +30,9 @@ class User(Base):
     last_bonus_date = Column(DateTime, nullable=True)
 
     is_paid = Column(Integer, default=0)
+
+    referral_code = Column(String(50), unique=True, index=True)
+    referred_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
 
     # Relationships
     activity_logs = relationship("UserActivityLog", back_populates="user", cascade="all, delete-orphan")
@@ -172,3 +175,73 @@ class PronunciationText(Base):
     difficulty_level = Column(Enum(DifficultyLevel), default=DifficultyLevel.Easy)
     category = Column(String(50), default="General")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class InstituteProfile(Base):
+    __tablename__ = "institute_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+
+    institute_name = Column(String(255))
+    contact_person = Column(String(255))
+    phone = Column(String(20))
+    website = Column(String(255))
+
+    created_at = Column(DateTime, server_default=func.now())
+
+class EarningStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    paid = "paid"
+    rejected = "rejected"
+
+
+class InstituteEarning(Base):
+    __tablename__ = "institute_earnings"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # 🔗 Relations
+    institute_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    referred_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    referral_id = Column(
+        Integer,
+        ForeignKey("referrals.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # 💰 Commission data
+    base_amount = Column(DECIMAL(10, 2), nullable=False)        # e.g. 1000
+    commission_percent = Column(Integer, nullable=False)        # 10 / 20 / 30
+    commission_amount = Column(DECIMAL(10, 2), nullable=False)  # e.g. 200
+
+    # 🔄 Status lifecycle
+    status = Column(
+        Enum(EarningStatus),
+        default=EarningStatus.pending,
+        nullable=False,
+        index=True
+    )
+
+    # 💳 Payout tracking
+    payout_reference = Column(String(255), nullable=True)
+    payout_date = Column(DateTime, nullable=True)
+
+    # 🔐 Refund safety
+    is_refunded = Column(Boolean, default=False)
+    refunded_at = Column(DateTime, nullable=True)
+
+    # 🕒 Timestamps
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
