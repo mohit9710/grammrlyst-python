@@ -153,6 +153,7 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "points": current_user.points,
         "bonus": current_user.bonus,
         "total_xp": current_user.total_xp,
+        "is_paid": current_user.is_paid,
         "last_login": current_user.last_login_date # Added for FE tracking
     }
 

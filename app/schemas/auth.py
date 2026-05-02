@@ -86,3 +86,4 @@ class PartnerApplySchema(BaseModel):
 
 class PurchaseSchema(BaseModel):
     amount: float
+    plan_name:str
