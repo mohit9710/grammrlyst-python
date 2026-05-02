@@ -7,8 +7,9 @@ class SignUpSchema(BaseModel):
     last_name: str
     email: EmailStr
     password: constr(min_length=8, max_length=72)
-    is_email_verified: int
-    
+    is_email_verified: Optional[bool] = None
+    referral_code: Optional[str] = None
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v):
@@ -75,3 +76,14 @@ class RoleListResponse(BaseModel):
 
 class FirebaseToken(BaseModel):
     token: str
+
+class PartnerApplySchema(BaseModel):
+    institute_name: str
+    contact_person: str
+    email: EmailStr
+    phone: str
+    website: str
+
+class PurchaseSchema(BaseModel):
+    amount: float
+    plan_name:str
