@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, s
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.db.session import SessionLocal
-from app.db.models import User, Verbs, InstituteProfile
+from app.db.models import User, Verbs, InstituteProfile, InstituteEarning
 from firebase_admin import storage
 from app.schemas.auth import SignUpSchema, SignInSchema, ResetPasswordSchema, ForgotPasswordSchema, FirebaseToken, PartnerApplySchema
 from app.core.security import hash_password, verify_password, create_token, generate_email_token, generate_reset_token
@@ -154,6 +154,7 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "bonus": current_user.bonus,
         "total_xp": current_user.total_xp,
         "is_paid": current_user.is_paid,
+        "referral_code": current_user.referral_code,
         "last_login": current_user.last_login_date # Added for FE tracking
     }
 

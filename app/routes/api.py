@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from app.db.session import SessionLocal
 # UserActivityLog ko import karna zaroori hai
-from app.db.models import DailyTip, User, UserActivityLog , Role
+from app.db.models import DailyTip, User, UserActivityLog , Role, InstituteProfile, InstituteEarning
 from app.core.dependencies import get_current_user
 # Schema import karein (redefine karne ki zaroorat nahi)
 from app.schemas.auth import XPUpdateRequest
 from sqlalchemy import and_, func
+from app.db.referral import Referral, ReferralType, ReferralStatus
+from app.db.referralReward import ReferralReward, RewardStatus, RewardType
 
 router = APIRouter(
     prefix="/api",
@@ -149,3 +151,42 @@ async def roles_list(db: Session = Depends(get_db)):
 @router.get('hello')
 def ping():
     return {"true" : 'yes this is true!'}
+
+@router.get("/referral/dashboard")
+def referral_dashboard(
+    db: Session = Depends(get_db),
+    current_user: int = Depends(get_current_user)
+):
+    # Total referrals
+    total_referrals = db.query(Referral).filter(
+        Referral.referrer_id == current_user.id
+    ).count()
+
+    # Completed referrals
+    completed_referrals = db.query(Referral).filter(
+        Referral.referrer_id == current_user.id,
+        Referral.status == "completed"
+    ).count()
+
+    # Rewards (student)
+    total_rewards = db.query(ReferralReward).filter(
+        ReferralReward.user_id == current_user.id
+    ).all()
+
+    total_reward_value = sum(r.reward_value for r in total_rewards)
+
+    # Institute earnings
+    earnings = db.query(InstituteEarning).filter(
+        InstituteEarning.institute_user_id == current_user.id
+    ).all()
+
+    total_earning = sum(e.commission_amount for e in earnings)
+    pending_earning = sum(e.commission_amount for e in earnings if e.status == "pending")
+
+    return {
+        "total_referrals": total_referrals,
+        "completed_referrals": completed_referrals,
+        "total_reward_value": total_reward_value,
+        "total_earning": total_earning,
+        "pending_earning": pending_earning
+    }
