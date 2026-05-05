@@ -5,6 +5,8 @@ from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db.models import User  # CRITICAL: Ensure User is imported!
+from app.db.purchase import Purchase
+from datetime import datetime, timedelta
 
 security = HTTPBearer()
 
@@ -67,3 +69,58 @@ def get_current_user_id(token=Depends(security)):
         return user_id
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+def require_active_plan(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    purchase = get_active_purchase(user_id, db)
+
+    if not purchase:
+        raise HTTPException(
+            status_code=403,
+            detail="Plan expired or not active"
+        )
+
+    return purchase
+
+
+def get_active_purchase(user_id: int, db: Session):
+    purchase = (
+        db.query(Purchase)
+        .filter(
+            Purchase.user_id == user_id,
+            Purchase.status == "success"
+        )
+        .order_by(Purchase.created_at.desc())
+        .first()
+    )
+
+    if not purchase:
+        return None
+
+    if purchase.end_date is None:
+        return purchase  # lifetime
+
+    if purchase.end_date > datetime.utcnow():
+        return purchase
+
+    return None
+
+def has_active_plan(user_id: int, db: Session):
+    purchase = (
+        db.query(Purchase)
+        .filter(
+            Purchase.user_id == user_id,
+            Purchase.status == "success"
+        )
+        .order_by(Purchase.created_at.desc())
+        .first()
+    )
+    if not purchase:
+        return False
+
+    if purchase.end_date is None:
+        return True  # lifetime
+
+    return purchase.end_date > datetime.utcnow()

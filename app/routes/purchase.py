@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.core.dependencies import get_current_user_id
+from app.core.dependencies import get_current_user_id, require_active_plan
 from app.schemas.auth import PurchaseSchema
+from app.schemas.purchase import PurchaseVerifySchema
 from app.db.referral import Referral, ReferralStatus, ReferralType
 from app.db.models import InstituteEarning
+from app.db.models import InstituteEarning
+from app.db.purchase import Purchase
 from datetime import datetime, timedelta
 import requests, os
 import pytz
@@ -328,3 +331,108 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         return {"status": "success"}
 
     return {"status": "ignored"}
+
+@router.post("/verify")
+def verify_payment(
+    payload: PurchaseVerifySchema,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    # ✅ Step 1: Verify signature
+    body = f"{payload.razorpay_order_id}|{payload.razorpay_payment_id}"
+
+    generated_signature = hmac.new(
+        bytes(RAZORPAY_SECRET, 'utf-8'),
+        bytes(body, 'utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    if generated_signature != payload.razorpay_signature:
+        raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    # ✅ Step 2: Get plan
+    plan = db.query(Plan).filter(Plan.name == payload.plan_name).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # ✅ Step 3: Calculate access
+    start_date = datetime.utcnow()
+
+    if plan.duration_days:
+        end_date = start_date + timedelta(days=plan.duration_days)
+    else:
+        end_date = None  # lifetime
+
+    # ✅ Step 4: Save purchase
+    purchase = Purchase(
+        user_id=user_id,
+        plan_id=plan.id,
+        payment_id=payload.razorpay_payment_id,
+        order_id=payload.razorpay_order_id,
+        signature=payload.razorpay_signature,
+        status="success",
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    db.add(purchase)
+
+    # ✅ Step 5: Update user access (optional shortcut)
+    user = db.query(User).filter(User.id == user_id).first()
+    user.is_paid = True
+
+    db.commit()
+
+    return {
+        "message": "Payment verified & access granted",
+        "plan": plan.name,
+        "valid_till": end_date
+    }
+
+@router.get("/premium-feature")
+def premium_api(purchase = Depends(require_active_plan)):
+    return {
+        "data": "premium content",
+        "plan": purchase.plan_id,
+        "plan_name": purchase.plan.name
+    }
+
+@router.get("/my-plan")
+def my_plan(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    purchase = get_user_active_plan(user_id, db)
+
+    if not purchase:
+        return {"plan": "free", "active": False}
+
+    return {
+        "plan": purchase.plan.name,
+        "active": True,
+        "valid_till": purchase.end_date
+    }
+
+def get_user_active_plan(user_id: int, db: Session):
+    purchase = (
+        db.query(Purchase)
+        .filter(
+            Purchase.user_id == user_id,
+            Purchase.status == "success"
+        )
+        .order_by(Purchase.created_at.desc())
+        .first()
+    )
+
+    if not purchase:
+        return None
+
+    # Lifetime plan
+    if purchase.end_date is None:
+        return purchase
+
+    # Active plan
+    if purchase.end_date > datetime.utcnow():
+        return purchase
+
+    return None
