@@ -4,21 +4,29 @@ from app.core.sentence import correct_sentence
 from app.core.roleplay import get_roleplay_response
 from starlette.concurrency import run_in_threadpool
 from app.core.dependencies import get_current_user
-from datetime import date
+from datetime import date, datetime
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+from app.db.models import UserDailyUsage
+from app.db.purchase import Purchase, Plan
 
 router = APIRouter(prefix="/sentence", tags=["Sentence Correction"])
 
 # =====================================================
-# 🔥 CONFIG
+# 🔥 CONFIG (DAILY LIMITS)
 # =====================================================
-MAX_MESSAGES = 10          # session ends at 10 chats
-FREE_DAILY_LIMIT = 1       # free user once per day
+FREE_MESSAGES = 5
+PAID_MESSAGES = 15
 
 # =====================================================
-# 🔥 TEMP STORAGE (⚠️ replace with Redis/DB in prod)
+# 🔌 DB DEP
 # =====================================================
-user_daily_usage = {}      # {user_id: date}
-session_message_count = {} # {session_id: count}
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # =====================================================
@@ -26,22 +34,11 @@ session_message_count = {} # {session_id: count}
 # =====================================================
 
 class SentenceRequest(BaseModel):
-    sentence: str = Field(
-        ..., 
-        min_length=1, 
-        max_length=500,
-        example="He go to school yesterday."
-    )
-
-class SentenceResponse(BaseModel):
-    original: str
-    fixed: str
-    rule: str = "Grammar & Style"
+    sentence: str = Field(..., min_length=1, max_length=500)
 
 class RoleplayRequest(BaseModel):
     role_title: str
     user_input: str
-    session_id: str
 
 
 # =====================================================
@@ -53,82 +50,117 @@ async def sentence_correct(req: SentenceRequest):
     try:
         result = await run_in_threadpool(correct_sentence, req.sentence)
         return result
+    except Exception:
+        raise HTTPException(status_code=500, detail="SERVER_ERROR")
 
-    except Exception as e:
-        print(f"Route Error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Server was unable to process the request."
-        )
 
+def get_user_plan(db: Session, user_id: int):
+    purchase = db.query(Purchase).filter(
+        Purchase.user_id == user_id
+    ).order_by(Purchase.id.desc()).first()
+
+    if not purchase:
+        return "free"
+
+    plan = db.query(Plan).filter(
+        Plan.id == purchase.plan_id
+    ).first()
+
+    if not plan:
+        return "free"
+
+    return plan.sub_name.lower()  # "basic", "pro"
 
 # =====================================================
-# --- Roleplay Chat ---
+# --- Roleplay Chat (DAILY LIMIT - DB BASED) ---
 # =====================================================
-
 @router.post("/roleplay")
 async def roleplay_chat(
     req: RoleplayRequest,
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    """
-    Roleplay chat rules:
-    ✅ Free user → 1 session/day
-    ✅ All users → max 10 messages/session
-    """
     try:
         user_id = current_user.id
         today = date.today()
-        session_id = req.session_id
 
-        # =====================================
-        # 🔥 FREE USER DAILY LIMIT (FIXED)
-        # =====================================
-        if not current_user.is_paid:
-            last_used = user_daily_usage.get(user_id)
+        user_plan = get_user_plan(db, user_id)
 
-            # block only if new session same day
-            if last_used == today and session_id not in session_message_count:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Free daily limit reached. Upgrade to continue."
-                )
+         # =====================================================
+        # 🔒 DETERMINE LIMIT
+        # =====================================================
+        if user_plan == "pro":
+            limit = float("inf")
+        elif user_plan == "basic":
+            limit = PAID_MESSAGES
+        else:
+            limit = FREE_MESSAGES
 
-        # =====================================
-        # 🔥 SESSION MESSAGE LIMIT
-        # =====================================
-        if session_id not in session_message_count:
-            session_message_count[session_id] = 0
+        # =====================================================
+        # 🔍 GET OR CREATE TODAY USAGE
+        # =====================================================
+        usage = db.query(UserDailyUsage).filter(
+            UserDailyUsage.user_id == user_id,
+            UserDailyUsage.usage_date == today
+        ).first()
 
-        if session_message_count[session_id] >= MAX_MESSAGES:
+        if not usage:
+            usage = UserDailyUsage(
+                user_id=user_id,
+                usage_date=today,
+                message_count=0
+            )
+            db.add(usage)
+            db.commit()
+            db.refresh(usage)
+
+        # =====================================================
+        # 🚫 CHECK LIMIT
+        # =====================================================
+        if usage.message_count >= limit:
             raise HTTPException(
                 status_code=403,
-                detail="Roleplay session ended. Start a new session."
+                detail="DAILY_LIMIT_REACHED"
             )
 
-        # =====================================
+        # =====================================================
         # 🤖 AI RESPONSE
-        # =====================================
+        # =====================================================
         result = await run_in_threadpool(
             get_roleplay_response,
             req.role_title,
             req.user_input
         )
 
-        # increment counter
-        session_message_count[session_id] += 1
+        # =====================================================
+        # 📈 UPDATE USAGE
+        # =====================================================
+        usage.message_count += 1
+        usage.last_message_at = datetime.utcnow()
+        db.commit()
 
-        # mark free usage (only first time)
-        if not current_user.is_paid:
-            user_daily_usage[user_id] = today
-
-        return result
+        # =====================================================
+        # 📤 RESPONSE
+        # =====================================================
+        return {
+            **result,
+            "usage": {
+                "used": usage.message_count,
+                "limit": "unlimited" if limit == float("inf") else limit,
+                "remaining": (
+                    "unlimited"
+                    if limit == float("inf")
+                    else max(0, limit - usage.message_count)
+                )
+            }
+        }
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Roleplay Route Error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="The AI tutor is currently unavailable."
+            detail="SERVER_ERROR"
         )

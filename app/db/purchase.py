@@ -10,6 +10,7 @@ class Plan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)   # free, monthly, yearly, lifetime
+    sub_name = Column(String, unique=True)   # free, monthly, yearly, lifetime
     price = Column(Float)
     duration = Column(Integer, nullable=True)  # null for lifetime
     is_active = Column(Boolean, default=True)

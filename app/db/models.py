@@ -245,3 +245,20 @@ class InstituteEarning(Base):
     # 🕒 Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+
+class UserDailyUsage(Base):
+    __tablename__ = "user_daily_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(BigInteger, nullable=False)
+    usage_date = Column(DateTime, nullable=False)
+
+    message_count = Column(Integer, default=0)
+    last_message_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "usage_date", name="unique_user_date"),
+    )
